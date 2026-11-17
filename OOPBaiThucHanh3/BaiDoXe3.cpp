@@ -7,6 +7,8 @@
 //Bool default = false
 // if (default) => ko lam gi ca tai if() o day check xem bool = true hay ko
 
+//Bai nay su dung mang con tro, vay nen '.' chuyen thanh '->'
+
 class PhuongTien{
     private:
     int MaXe;
@@ -87,14 +89,15 @@ class BaiDoXe{
     BaiDoXe(const BaiDoXe& park); //park = copy, deep copy khi khoi tao doi tuong moi tu doi tuong cu
     BaiDoXe& operator=(const BaiDoXe& park); //deep copy khi gan hai doi tuong cho nhau
 
-    //___________________________________________________
+    //______________________________________________________________________________________________________
     int LayMa() const;
     bool DaDay() const;
     bool ThemXe(const PhuongTien v);
     bool XoaXe(int MaXe);
     int Index_PT(int MaXe)const;
     void HienThi() const;
-
+    void resize(int NewCapacity);//Chinh lai kick co bai do xe
+    //______________________________________________________________________________________________________
     bool CoLoai(std::string Loai, int& dem, double& tong) const; //<- dung de hien thi loai xe minh can
 };
 
@@ -113,7 +116,7 @@ BaiDoXe::BaiDoXe(int ID, char size){
     KichCo = size;
     SoLuong_PT = 0;
     Capacity = (KichCo=='S')? 1 : (KichCo=='M')? 2 : 3;
-    PT = new PhuongTien*[Capacity];
+    PT = new PhuongTien*[Capacity]; //Do la mang con tro nen dung new
     for(int i = 0; i<Capacity;i++){
         PT[i] = nullptr; //Moi vung nho chua hop le gan nullptr
     }
@@ -124,11 +127,11 @@ BaiDoXe::~BaiDoXe(){
             delete PT[i];
             PT[i] = nullptr;
         }
-        delete PT;
-        PT = nullptr;
+        delete[] PT;
+        PT = nullptr; 
     }
 }
-BaiDoXe::BaiDoXe(const BaiDoXe& park){
+BaiDoXe::BaiDoXe(const BaiDoXe& park){ //gan toan bo du lieu cua bai do xe cu -> moi
     ID_BaiDoXe = park.ID_BaiDoXe;
     KichCo = park.KichCo;
     SoLuong_PT = park.SoLuong_PT;
@@ -136,35 +139,62 @@ BaiDoXe::BaiDoXe(const BaiDoXe& park){
     PT = new PhuongTien*[Capacity]; 
     for(int i = 0; i<Capacity;i++){ //copy lai du lieu neu ma ko rong
         if(i < SoLuong_PT && park.PT[i] != nullptr){
-            PT[i] = new PhuongTien(park.PT[i]);
+            PT[i] = new PhuongTien(*(park.PT[i]));
         }
         else{
             PT[i] = nullptr;
         }
     }
 }
-BaiDoXe& BaiDoXe::operator=(const BaiDoXe& park){
-    if(this)
+BaiDoXe& BaiDoXe::operator=(const BaiDoXe& park){//copy ca hai cai tren, hinh nhu vay
+    if(this == &park){ 
+        return *this; //Neu da gan roi thi thoi
+    }
+    //chua thi bo cai cu di roi copy lai
+    if(PT!=nullptr){
+        for(int i = 0; i<Capacity;i++){
+            delete PT[i];
+            PT[i] = nullptr;
+        }
+        delete[] PT; //Giai phong mang cu
+        PT = nullptr;
+    }
+
+    ID_BaiDoXe = park.ID_BaiDoXe;
+    KichCo = park.KichCo;
+    SoLuong_PT = park.SoLuong_PT;
+    Capacity = park.Capacity;
+    PT = new PhuongTien*[Capacity]; 
+    for(int i = 0; i<Capacity;i++){ //copy lai du lieu neu ma ko rong
+        if(i < SoLuong_PT && park.PT[i] != nullptr){
+            PT[i] = new PhuongTien(*(park.PT[i]));
+        }
+        else{
+            PT[i] = nullptr;
+        }
+    }
+    return *this;
 }
+
 int BaiDoXe::LayMa()const{
     return ID_BaiDoXe;
 }
 bool BaiDoXe::DaDay() const{
-    int Cap = (KichCo=='S')? 1 : (KichCo=='M')? 2 : 3;
-    return SoLuong_PT >= Cap; //check neu ma DaDay hay chua, true = day, false = chua
+    return SoLuong_PT >= Capacity; //check neu ma DaDay hay chua, true = day, false = chua
+    //vi da co Capacity de check S/M/L roi nen ko can int "Cap = (KichCo=='S')? 1 : (KichCo=='M')? 2 : 3;""
 }
-bool BaiDoXe::ThemXe(PhuongTien v){
-    int Cap = (KichCo=='S')? 1 : (KichCo=='M')? 2 : 3; //<- Size = S => 1 xe, Size = M => 2 xe, Size = L => 3 xe
-    if(SoLuong_PT<Cap){ // '<' do mang co ca 0, 0 tinh la mot phan tu
-        PT[SoLuong_PT] = v;
-        SoLuong_PT++;
-        return true;
+bool BaiDoXe::ThemXe(const PhuongTien v){
+    if(SoLuong_PT>=Capacity){ 
+        resize(Capacity * 2); //De bai yeu cau neu day bai do roi thi mo rong 
     }
-    return false;
+    PT[SoLuong_PT] = new PhuongTien(v); //Mang con tro -> new
+    SoLuong_PT++;
+    return true;
+    //return false; <- bo false di do yeu cau ko cho loi nua v:
 }
 int BaiDoXe::Index_PT(int MaXe)const{
     for(int i = 0; i< SoLuong_PT;i++){
-        if(PT[i].LayMaXe() == MaXe){
+        if(PT[i]!= nullptr && PT[i]->LayMaXe() == MaXe){ //Chuyen PT[i].LayMaXe() thanh PT[i]->LayMaXe() do la mang con tro
             return i;//tra ve chi so index
         }
     }
@@ -175,45 +205,74 @@ bool BaiDoXe::XoaXe(int MaXe){
     if(id==-1){
         return false;
     }
+
+    delete PT[id]; //Giai phong mang da roi moi gan them duoc
+    PT[id] = nullptr;
     for(int i = 0;i< SoLuong_PT-1;i++){//loại trừ bãi đỗ cuối do ko cần đẩy lùi cái đó
         PT[i] = PT[i+1];
     }
+
+    PT[SoLuong_PT - 1] = nullptr;
     SoLuong_PT--;
     return true;
 }
 void BaiDoXe::HienThi()const{
-    int Cap = (KichCo=='S')? 1 : (KichCo=='M')? 2 : 3;
     std::cout << "Bai: " << ID_BaiDoXe << "(" << KichCo << ")"
-              << "||So xe: " << SoLuong_PT << "/" << Cap << '\n'; 
+              << "||So xe: " << SoLuong_PT << "/" << Capacity << '\n'; 
     for(int i = 0; i < SoLuong_PT;i++){
-        PT[i].HienThi();
+        if(PT[i]!=nullptr){
+            PT[i]->HienThi();
+        }
     }
 }
 bool BaiDoXe::CoLoai(std::string Loai, int& dem, double& tong) const{
     dem = 0; tong = 0;
     for(int i = 0; i < SoLuong_PT; i++){
-        if(PT[i].LayLoaiXe() == Loai){
+        if(PT[i]->LayLoaiXe() == Loai && PT[i]){
             dem++;
-            tong+=PT[i].TinhPhi();
+            tong+=PT[i]->TinhPhi();
         }
     }
     return dem > 0;
 }
+void BaiDoXe::resize(int NewCapacity){
+    PhuongTien** NewPT = new PhuongTien*[NewCapacity]; //Truyen cac du lieu vao mot mang moi, copy cac du lieu, xoa mang cu roi cap nhat Capacity
+    for(int i = 0; i<NewCapacity;i++){ 
+        if(i < SoLuong_PT && i < Capacity){
+            NewPT[i] = PT[i]; //Gan lai cac gia tri cu (phuong tien)
+        }
+        else{
+            NewPT[i] = nullptr;
+        }
+    }
+    delete[] PT;
+    PT = NewPT;
+    Capacity = NewCapacity;
+}
+
+
 
 class SystemInterface{
     private: 
-    static const int BaiDo_Max = 10;
-    BaiDoXe baidoxe[BaiDo_Max];
+    //static const int BaiDo_Max = 10;
+    //BaiDoXe baidoxe[BaiDo_Max];
+    int DoChua_BaiDo;
     int SoLuong_BaiDo;
+    BaiDoXe** baidoxe;//Tuong tu nhu o tren
 
     public:
     SystemInterface();
+    //Rule of your mom
+    ~SystemInterface();
+    SystemInterface(const SystemInterface& SI);
+    SystemInterface& operator=(const SystemInterface& SI);
+    //___________________________________________________________________
     void runMenu();
     bool isParkIDExists(int pID) const;
     bool isVehicleIDExists(int vID) const;
     int generateRandomID() const;
-
-
+    void ResizeSystem(int NewCapacity); // mo rong suc chua bai do
+    //___________________________________________________________________
     void TaoBaiDo();
     void ThemXe();
     void XoaBaiDo();
@@ -226,11 +285,85 @@ class SystemInterface{
 
 SystemInterface::SystemInterface(){
     SoLuong_BaiDo = 0;
+    DoChua_BaiDo = 5;
+    baidoxe = new BaiDoXe*[DoChua_BaiDo];
+    for(int i = 0; i < DoChua_BaiDo;i++){
+        baidoxe[i] = nullptr;
+    }
 }
+
+SystemInterface::~SystemInterface(){
+    if(baidoxe!=nullptr){
+        for(int i = 0; i < DoChua_BaiDo;i++){
+            delete baidoxe[i]; 
+            baidoxe[i] = nullptr;
+        }
+        delete baidoxe;
+        baidoxe = nullptr;
+    }
+}
+SystemInterface::SystemInterface(const SystemInterface& SI){ //gan toan bo du lieu cua bai do xe cu -> moi
+    DoChua_BaiDo = SI.DoChua_BaiDo;
+    SoLuong_BaiDo = SI.SoLuong_BaiDo;
+
+    baidoxe = new BaiDoXe*[DoChua_BaiDo];
+    for(int i = 0; i<DoChua_BaiDo;i++){ //copy lai du lieu neu ma ko rong
+        if(i < SoLuong_BaiDo && SI.baidoxe[i] != nullptr){
+            baidoxe[i] = new BaiDoXe(*(SI.baidoxe[i]));
+        }
+        else{
+            baidoxe[i] = nullptr;
+        }
+    }
+}
+SystemInterface& SystemInterface::operator=(const SystemInterface& SI){//copy ca hai cai tren, hinh nhu vay
+    if(this == &SI){ 
+        return *this; //Neu da gan roi thi thoi
+    }
+    //chua thi bo cai cu di roi copy lai
+    if(baidoxe!=nullptr){
+        for(int i = 0; i < DoChua_BaiDo;i++){
+            delete baidoxe[i]; 
+            baidoxe[i] = nullptr;
+        }
+        delete baidoxe;
+        baidoxe = nullptr;
+    }
+
+    DoChua_BaiDo = SI.DoChua_BaiDo;
+    SoLuong_BaiDo = SI.SoLuong_BaiDo;
+
+    baidoxe = new BaiDoXe*[DoChua_BaiDo];
+    for(int i = 0; i<DoChua_BaiDo;i++){ //copy lai du lieu neu ma ko rong
+        if(i < SoLuong_BaiDo && SI.baidoxe[i] != nullptr){
+            baidoxe[i] = new BaiDoXe(*(SI.baidoxe[i]));
+        }
+        else{
+            baidoxe[i] = nullptr;
+        }
+    }
+
+    return *this;
+}
+
+void SystemInterface::ResizeSystem(int NewCapacity){
+    BaiDoXe** Newbaido = new BaiDoXe*[NewCapacity];//nhu phan resize o tren 
+        for(int i = 0; i < NewCapacity; i++){
+            if(i < SoLuong_BaiDo && i < DoChua_BaiDo){
+                Newbaido[i] = baidoxe[i]; 
+            }
+            else{
+                Newbaido[i] = nullptr;
+            }
+        }
+    delete[] baidoxe;
+    baidoxe = Newbaido;
+    DoChua_BaiDo = NewCapacity;
+    }
 
 bool SystemInterface::isParkIDExists(int pID) const{
     for(int i = 0; i < SoLuong_BaiDo;i++){
-        if(baidoxe[i].LayMa() == pID){
+        if(baidoxe[i]->LayMa() == pID && baidoxe[i]!=nullptr){
             return true;
         }
     }
@@ -238,7 +371,7 @@ bool SystemInterface::isParkIDExists(int pID) const{
 }
 bool SystemInterface::isVehicleIDExists(int vID) const{
     for(int i = 0; i < SoLuong_BaiDo;i++){
-        if(baidoxe[i].Index_PT(vID) != -1){//Index_PT return -1 neu ko co
+        if(baidoxe[i]->Index_PT(vID) != -1){//Index_PT return -1 neu ko co
             return true;
         }
     }
@@ -250,9 +383,8 @@ int SystemInterface::generateRandomID() const{
     return id;
 }
 void SystemInterface::TaoBaiDo(){
-        if(SoLuong_BaiDo>BaiDo_Max){
-            std::cout << "Khong the tao them bai do xe.\n";
-            return;
+        if(SoLuong_BaiDo>DoChua_BaiDo){
+            ResizeSystem(DoChua_BaiDo*2);
         }
         int Ma;
         char KT;
@@ -278,11 +410,15 @@ void SystemInterface::TaoBaiDo(){
             std::cin >> KT;
         }
 
-        baidoxe[SoLuong_BaiDo] = BaiDoXe(Ma,KT);
+        baidoxe[SoLuong_BaiDo] = new BaiDoXe(Ma,KT);
         SoLuong_BaiDo++;
     std::cout<< "Da Tao Bai\n";
 }
 void SystemInterface::ThemXe(){
+            if(SoLuong_BaiDo==0){
+                std::cout<< "Chua co bai do. Hay tao mot bai truoc.\n";
+                return;
+            }
             int MaXe;
             int GioVao;
             int ThoiGianDo;
@@ -321,22 +457,16 @@ void SystemInterface::ThemXe(){
                 std::cout << "Du lieu khong hop le. Nhap lai thoi gian do: ";
             }
 
-
             PhuongTien v(MaXe,LoaiXe,GioVao,ThoiGianDo);
-            bool check = false;
-
+            
             for(int i=0;i<SoLuong_BaiDo;i++){
-                if(!baidoxe[i].DaDay()){
-                    check = baidoxe[i].ThemXe(v);
+                if(baidoxe[i]->ThemXe(v)){
+                    std::cout << "Da them xe " << MaXe << " vao bai " << baidoxe[i]->LayMa() 
+                    << " || Kinh phi: " << std::fixed << std::setprecision(2) << v.TinhPhi() << '\n';
+                    break;
                 }
-            if(check){
-                std::cout<< "Da them xe " << MaXe << "||Kinh phi: " << std::fixed << std::setprecision(2) << v.TinhPhi() <<'\n';
-            }
-            else{
-                std::cout<< "Tat ca bai do da day.\n";
                 return;
             }
-        }
 }
 void SystemInterface::XoaBaiDo(){
     int MaBai;
@@ -348,15 +478,19 @@ void SystemInterface::XoaBaiDo(){
     }
     int id = -1;
     for(int i = 0; i<SoLuong_BaiDo;i++){
-        if(baidoxe[i].LayMa() == MaBai){
+        if(baidoxe[i]->LayMa() == MaBai){
             id = i;
             break;
         }
     }
+
     if(id!=-1){
+        delete baidoxe[id];
+        baidoxe[id] = nullptr;
         for(int i = id; i<SoLuong_BaiDo;i++){
             baidoxe[i] = baidoxe[i+1];
         }
+        baidoxe[SoLuong_BaiDo-1]=nullptr;
         SoLuong_BaiDo--;
         std::cout<< "Xoa bai do thanh cong.\n";
     }
@@ -376,7 +510,7 @@ void SystemInterface::LayXeRa(){
 
     bool check = false;
     for(int i = 0; i < SoLuong_BaiDo;i++){
-        if(baidoxe[i].XoaXe(MaXe)){
+        if(baidoxe[i]->XoaXe(MaXe)){
             check = true;
             break;
         }
@@ -393,7 +527,7 @@ void SystemInterface::LayXeRa(){
 void SystemInterface::HienThiTatCa(){
     if(SoLuong_BaiDo > 0){
         for(int i = 0; i<SoLuong_BaiDo;i++){
-            baidoxe[i].HienThi();
+            baidoxe[i]->HienThi();
             std::cout << "----------------\n";
         }
     }
@@ -411,8 +545,8 @@ void SystemInterface::HienThiTheoBai(){
         } 
     bool check = false;
     for(int i = 0; i<SoLuong_BaiDo;i++){
-        if(baidoxe[i].LayMa() == MaBai){
-            baidoxe[i].HienThi();
+        if(baidoxe[i]->LayMa() == MaBai){
+            baidoxe[i]->HienThi();
             check = true;
         }
     }
@@ -433,8 +567,8 @@ void SystemInterface::LietKeXeTheoLoai(){
     for(int i = 0; i < SoLuong_BaiDo;i++){
         int dem;
         double tong;//ko can dem = 0, tong = 0 vi cho vao CoLoai() roi
-        if(baidoxe[i].CoLoai(LoaiXe,dem,tong)){
-            baidoxe[i].HienThi();
+        if(baidoxe[i]->CoLoai(LoaiXe,dem,tong)){
+            baidoxe[i]->HienThi();
             DemTong++;
         }
     }
@@ -451,7 +585,7 @@ void SystemInterface::PhiTrungBinh(){
         for(int j = 0; j < SoLuong_BaiDo; j++){
             int d;
             double s;
-            if(baidoxe[j].CoLoai(LoaiXe[i],d,s) && d>0){
+            if(baidoxe[j]->CoLoai(LoaiXe[i],d,s) && d>0){
                 dem+=d;
                 tong+=s;
             }
@@ -507,13 +641,16 @@ void SystemInterface::runMenu(){
         case 8:
             PhiTrungBinh();
             break;
+        case 9:
+            std::cout<< "See u l8ter";
+            break;
         default:
-            std::cout<< "No";
-
+            std::cout<< "Kys";
+            return;
+            break;
         }
     }while(chon!=9);
 }
-
 
 
 int main(){
