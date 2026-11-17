@@ -352,7 +352,7 @@ void SystemInterface::HienThiTatCa(){
         }
     }
     else{
-        std::cout<< "Khong co bai do";
+        std::cout<< "Khong co bai do\n";
     }
 }
 void SystemInterface::HienThiTheoBai(){
@@ -461,6 +461,9 @@ void SystemInterface::runMenu(){
         case 8:
             PhiTrungBinh();
             break;
+        default:
+            std::cout<< "No";
+
         }
     }while(chon!=9);
 }
